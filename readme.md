@@ -83,6 +83,6 @@ Didistribusikan di bawah Lisensi MIT. Lihat `LICENSE` untuk informasi lebih lanj
 
 ## 📞 Kontak
 
-Nama Anda - [@twitter_handle](https://twitter.com/twitter_handle) - email@example.com
+Reyhan Nazera R
 
-Link Proyek: [https://github.com/username/advanced-shapefile-viewer](https://github.com/username/advanced-shapefile-viewer)
+Link Proyek: [https://github.com/reyhannazera16/shapefile-and-converter.git](https://github.com/reyhannazera16/shapefile-and-converter.git)
