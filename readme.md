@@ -7,7 +7,7 @@
 
 Advanced Shapefile Viewer adalah aplikasi web interaktif yang memungkinkan Anda untuk mengunggah, memvisualisasikan, dan melakukan analisis spasial pada file shapefile dengan mudah dan cepat. Aplikasi ini dibangun menggunakan Leaflet dan Turf.js untuk memberikan pengalaman GIS yang profesional langsung di browser Anda.
 
-![Screenshot Aplikasi](screenshot.png)
+![Screenshot Aplikasi](https://res.cloudinary.com/dxbocw7av/video/upload/v1751044622/2025-06-28_00-11-28_oxklik.mkv)
 
 ## ✨ Fitur Utama
 
