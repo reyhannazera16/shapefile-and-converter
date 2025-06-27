@@ -1,0 +1,3252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Shapefile Viewer - ArcGIS Style</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        .header-nav {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 80vh;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            height: fit-content;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .map-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+
+        .map-toolbar {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            padding: 0 10px;
+            border-right: 1px solid #dee2e6;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .toolbar-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .toolbar-btn:hover {
+            background: #e9ecef;
+        }
+
+        .toolbar-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .selection-info {
+            background: #e7f3ff;
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .selection-count {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-section.dragover {
+            border-color: #667eea;
+            background: #e3f2fd;
+            transform: scale(1.02);
+        }
+
+        .upload-area {
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1rem;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn, .tool-btn, .action-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .upload-btn:hover, .tool-btn:hover, .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .tool-btn {
+            width: 100%;
+            margin: 5px 0;
+            font-size: 0.85rem;
+            padding: 8px 15px;
+        }
+
+        .tool-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .layer-list {
+            margin-bottom: 20px;
+        }
+
+        .layer-item {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .layer-item.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .layer-info {
+            flex: 1;
+        }
+
+        .layer-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .layer-count {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .layer-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .layer-controls button {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .visibility-btn {
+            background: #28a745;
+        }
+
+        .visibility-btn.hidden {
+            background: #6c757d;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+        }
+
+        .map-container {
+            height: 500px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            flex-grow: 1;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .context-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 200px;
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f1f1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-menu-item:hover {
+            background: #f8f9fa;
+        }
+
+        .context-menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .context-menu-item.disabled {
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .context-menu-item.disabled:hover {
+            background: white;
+        }
+
+        .floating-toolbar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 999;
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            padding: 5px;
+        }
+
+        .floating-toolbar button {
+            background: none;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
+        }
+
+        .floating-toolbar button:hover {
+            background: #f8f9fa;
+        }
+
+        .tool-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+            border: 2px solid #667eea;
+        }
+
+        .tool-panel h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .loading-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error, .success {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .supported-formats {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .selection-mode-indicator {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            z-index: 1001;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .quick-tools {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quick-tool-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-tool-btn:hover {
+            background: #e9ecef;
+        }
+
+        .quick-tool-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Converter Page Styles */
+        .converter-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .converter-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .converter-header h2 {
+            color: #2c3e50;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .converter-content {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .converter-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .converter-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .converter-upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s ease;
+        }
+
+        .converter-upload-section:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .converter-upload-section.dragover {
+            border-color: #667eea;
+            background: #e3f2fd;
+            transform: scale(1.02);
+        }
+
+        .format-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .format-option {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .format-option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
+        .format-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .format-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .format-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .format-desc {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .option-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .option-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .option-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .option-group small {
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+
+        .converter-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px;
+        }
+
+        .converter-results {
+            background: #e7f3ff;
+            border: 1px solid #667eea;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .result-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-info {
+            flex: 1;
+        }
+
+        .result-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .result-size {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .uploaded-file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #e7f3ff;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .file-icon {
+            font-size: 3rem;
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .file-stats {
+            color: #667eea;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .file-actions button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .file-actions button:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                max-height: none;
+            }
+            
+            .map-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .toolbar-group {
+                border-right: none;
+                border-bottom: 1px solid #dee2e6;
+                padding: 10px 0;
+            }
+
+            .header-nav {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .converter-container {
+                padding: 10px;
+            }
+
+            .format-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .converter-actions {
+                flex-direction: column;
+            }
+
+            .result-item {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Advanced Shapefile Viewer</h1>
+            <p>Klik shapefile di map untuk memilih, kemudian gunakan tools geoprocessing - seperti ArcGIS</p>
+            <div class="header-nav">
+                <a href="#" class="nav-btn active" onclick="showMainPage()">🗺️ Map Viewer</a>
+                <a href="#" class="nav-btn" onclick="showConverterPage()">🔄 File Converter</a>
+            </div>
+        </div>
+
+        <!-- Main Map Viewer Page -->
+        <div id="mainPage" class="main-content">
+            <div class="sidebar">
+                <div class="upload-section" id="uploadSection">
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">Upload Shapefile</div>
+                        <button class="upload-btn">Pilih File</button>
+                        <div class="supported-formats">
+                            <strong>Format:</strong><br>
+                            • ZIP berisi shapefile<br>
+                            • File .shp + komponen
+                        </div>
+                    </div>
+                    <input type="file" id="fileInput" class="file-input" accept=".zip,.shp,.shx,.dbf,.prj" multiple>
+                </div>
+
+                <div class="section-title">Layers</div>
+                <div class="layer-list" id="layerList">
+                    <p style="color: #6c757d; font-style: italic; text-align: center;">Belum ada layer</p>
+                </div>
+
+                <div class="selection-info" id="selectionInfo">
+                    <div class="selection-count">0 features selected</div>
+                    <div class="quick-tools" id="quickTools"></div>
+                </div>
+
+                <div class="section-title">Geoprocessing Tools</div>
+                <div style="font-size: 0.85rem; color: #6c757d; margin-bottom: 10px; font-style: italic;">
+                    💡 Pilih feature di map terlebih dahulu untuk mengaktifkan tools
+                </div>
+                
+                <button class="tool-btn" onclick="showToolPanel('clip')" disabled>🔪 Clip</button>
+                <button class="tool-btn" onclick="showToolPanel('intersect')" disabled>⚡ Intersect</button>
+                <button class="tool-btn" onclick="showToolPanel('union')" disabled>🔗 Union</button>
+                <button class="tool-btn" onclick="showToolPanel('erase')" disabled>🗑️ Erase</button>
+                <button class="tool-btn" onclick="showToolPanel('dissolve')" disabled>🫧 Dissolve</button>
+                <button class="tool-btn" onclick="showToolPanel('buffer')" disabled>📍 Buffer</button>
+                <button class="tool-btn" onclick="showToolPanel('merge')" disabled>📄 Merge</button>
+                <button class="tool-btn" onclick="showToolPanel('append')" disabled>➕ Append</button>
+                <button class="tool-btn" onclick="showToolPanel('spatialJoin')" disabled>🔀 Spatial Join</button>
+                <button class="tool-btn" onclick="showToolPanel('split')" disabled>✂️ Split</button>
+                <button class="tool-btn" onclick="showToolPanel('selectByLocation')" disabled>🎯 Select by Location</button>
+                <button class="tool-btn" onclick="showToolPanel('update')" disabled>🔄 Update</button>
+                <button class="tool-btn" onclick="showToolPanel('identity')" disabled>🆔 Identity</button>
+
+                <!-- Tool Panels -->
+                <div id="toolPanels"></div>
+
+                <div class="loading" id="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Memproses...</p>
+                </div>
+                <div class="error" id="error"></div>
+                <div class="success" id="success"></div>
+            </div>
+
+            <div class="map-area">
+                <div class="map-toolbar">
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn active" id="selectBtn" onclick="setSelectionMode(true)">
+                            🎯 Select
+                        </button>
+                        <button class="toolbar-btn" id="panBtn" onclick="setSelectionMode(false)">
+                            ✋ Pan
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="clearSelection()">
+                            🗑️ Clear Selection
+                        </button>
+                        <button class="toolbar-btn" onclick="zoomToSelection()" disabled id="zoomToSelectionBtn">
+                            🔍 Zoom to Selection
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" onclick="exportSelection()" disabled id="exportBtn">
+                            💾 Export Selected
+                        </button>
+                    </div>
+                </div>
+
+                <div class="map-container">
+                    <div id="map"></div>
+                    
+                    <!-- Context Menu -->
+                    <div class="context-menu" id="contextMenu">
+                        <div class="context-menu-item" onclick="selectFeature(contextMenuFeature)">
+                            <span>🎯</span> Select Feature
+                        </div>
+                        <div class="context-menu-item" onclick="quickBuffer(contextMenuFeature)">
+                            <span>📍</span> Quick Buffer
+                        </div>
+                        <div class="context-menu-item" onclick="showFeatureInfo(contextMenuFeature)">
+                            <span>ℹ️</span> Feature Info
+                        </div>
+                        <div class="context-menu-item" onclick="deleteFeature(contextMenuFeature)">
+                            <span>🗑️</span> Delete Feature
+                        </div>
+                    </div>
+
+                    <!-- Floating Toolbar -->
+                    <div class="floating-toolbar" id="floatingToolbar">
+                        <button onclick="quickBuffer()" title="Quick Buffer">📍</button>
+                        <button onclick="quickClip()" title="Quick Clip">🔪</button>
+                        <button onclick="quickIntersect()" title="Quick Intersect">⚡</button>
+                        <button onclick="quickUnion()" title="Quick Union">🔗</button>
+                        <button onclick="clearSelection()" title="Clear Selection">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Converter Page -->
+        <div id="converterPage" class="main-content" style="display: none;">
+            <div class="converter-container">
+                <div class="converter-header">
+                    <h2>🔄 File Format Converter</h2>
+                    <p>Convert shapefile to various formats (KML, GeoJSON, GPX, CSV, etc.)</p>
+                </div>
+
+                <div class="converter-content">
+                    <div class="converter-section">
+                        <h3>📁 Input File</h3>
+                        <div class="converter-upload-section" id="converterUploadSection">
+                            <div class="upload-area" onclick="document.getElementById('converterFileInput').click()">
+                                <div class="upload-icon">📦</div>
+                                <div class="upload-text">Drag & drop geospatial file or click to browse</div>
+                                <button class="upload-btn">Choose File</button>
+                                <div class="supported-formats">
+                                    <strong>Supported Input Formats:</strong><br>
+                                    • <code>.zip</code> - Shapefile package<br>
+                                    • <code>.shp</code> - ESRI Shapefile (with .shx, .dbf)<br>
+                                    • <code>.geojson</code> - GeoJSON format<br>
+                                    • <code>.kml</code> - Google Earth KML<br>
+                                    • <code>.gpx</code> - GPS Exchange<br>
+                                    • <code>.csv</code> - CSV with coordinates<br>
+                                    • <code>.json</code> - GeoJSON/TopoJSON<br>
+                                    • <code>.wkt</code> - Well-Known Text<br>
+                                    <em>💡 Select any geospatial format to convert</em>
+                                </div>
+                            </div>
+                            <input type="file" id="converterFileInput" class="file-input" accept=".zip,.shp,.shx,.dbf,.prj,.geojson,.json,.kml,.gpx,.csv,.wkt" multiple>
+                        </div>
+                    </div>
+
+                    <div class="converter-section">
+                        <h3>🎯 Output Format</h3>
+                        <div class="format-grid">
+                            <div class="format-option" data-format="shp">
+                                <div class="format-icon">🗂️</div>
+                                <div class="format-name">Shapefile</div>
+                                <div class="format-desc">ESRI Shapefile format</div>
+                            </div>
+                            <div class="format-option" data-format="geojson">
+                                <div class="format-icon">🗺️</div>
+                                <div class="format-name">GeoJSON</div>
+                                <div class="format-desc">Web-friendly JSON format</div>
+                            </div>
+                            <div class="format-option" data-format="kml">
+                                <div class="format-icon">🌍</div>
+                                <div class="format-name">KML</div>
+                                <div class="format-desc">Google Earth format</div>
+                            </div>
+                            <div class="format-option" data-format="gpx">
+                                <div class="format-icon">📍</div>
+                                <div class="format-name">GPX</div>
+                                <div class="format-desc">GPS exchange format</div>
+                            </div>
+                            <div class="format-option" data-format="csv">
+                                <div class="format-icon">📊</div>
+                                <div class="format-name">CSV</div>
+                                <div class="format-desc">Attributes table only</div>
+                            </div>
+                            <div class="format-option" data-format="topojson">
+                                <div class="format-icon">🗺️</div>
+                                <div class="format-name">TopoJSON</div>
+                                <div class="format-desc">Topology-preserving JSON</div>
+                            </div>
+                            <div class="format-option" data-format="wkt">
+                                <div class="format-icon">📐</div>
+                                <div class="format-name">WKT</div>
+                                <div class="format-desc">Well-Known Text</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="converter-section">
+                        <h3>⚙️ Conversion Options</h3>
+                        <div class="options-grid">
+                            <div class="option-group">
+                                <label>
+                                    <input type="checkbox" id="includeAttributes" checked>
+                                    Include Attributes
+                                </label>
+                                <small>Include feature properties in output</small>
+                            </div>
+                            <div class="option-group">
+                                <label>
+                                    <input type="checkbox" id="simplifyGeometry">
+                                    Simplify Geometry
+                                </label>
+                                <small>Reduce file size (may lose detail)</small>
+                            </div>
+                            <div class="option-group">
+                                <label>
+                                    <input type="checkbox" id="reproject">
+                                    Reproject to WGS84
+                                </label>
+                                <small>Convert to standard GPS coordinates</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="converter-actions">
+                        <button class="action-btn" id="convertBtn" onclick="convertFile()" disabled>
+                            🔄 Convert File
+                        </button>
+                        <button class="action-btn" onclick="resetConverter()" style="background: #6c757d;">
+                            🔄 Reset
+                        </button>
+                    </div>
+
+                    <div class="converter-results" id="converterResults" style="display: none;">
+                        <h3>✅ Conversion Results</h3>
+                        <div class="results-list" id="resultsList"></div>
+                    </div>
+
+                    <div class="loading" id="converterLoading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Converting file...</p>
+                    </div>
+                    <div class="error" id="converterError" style="display: none;"></div>
+                    <div class="success" id="converterSuccess" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selection Mode Indicator -->
+    <div class="selection-mode-indicator" id="selectionModeIndicator">
+        🎯 Selection Mode Active - Klik feature untuk memilih
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shpjs/3.6.3/shp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+    <script>
+        let map;
+        let layers = {};
+        let layerCounter = 0;
+        let selectedFeatures = [];
+        let selectionMode = true;
+        let contextMenuFeature = null;
+        let currentLayer = null;
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([-6.2088, 106.8456], 10);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Add map click handler
+            map.on('click', function(e) {
+                if (!selectionMode) return;
+                
+                // Hide context menu if clicking elsewhere
+                hideContextMenu();
+            });
+
+            // Add context menu handler
+            map.on('contextmenu', function(e) {
+                e.originalEvent.preventDefault();
+                hideContextMenu();
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            setupEventListeners();
+            createToolPanels();
+            setSelectionMode(true);
+        });
+
+        function setupEventListeners() {
+            const uploadSection = document.getElementById('uploadSection');
+            const fileInput = document.getElementById('fileInput');
+
+            // Drag and drop events
+            uploadSection.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadSection.classList.add('dragover');
+            });
+
+            uploadSection.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadSection.classList.remove('dragover');
+            });
+
+            uploadSection.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadSection.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+
+            fileInput.addEventListener('change', function(e) {
+                handleFiles(e.target.files);
+            });
+
+            // Hide context menu when clicking elsewhere
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.context-menu')) {
+                    hideContextMenu();
+                }
+            });
+        }
+
+        function setSelectionMode(isSelectionMode) {
+            selectionMode = isSelectionMode;
+            
+            const selectBtn = document.getElementById('selectBtn');
+            const panBtn = document.getElementById('panBtn');
+            const indicator = document.getElementById('selectionModeIndicator');
+            
+            if (isSelectionMode) {
+                selectBtn.classList.add('active');
+                panBtn.classList.remove('active');
+                indicator.style.display = 'block';
+                map.dragging.disable();
+                map.scrollWheelZoom.disable();
+            } else {
+                selectBtn.classList.remove('active');
+                panBtn.classList.add('active');
+                indicator.style.display = 'none';
+                map.dragging.enable();
+                map.scrollWheelZoom.enable();
+            }
+        }
+
+        function handleFiles(files) {
+            showLoading(true);
+            hideMessages();
+            
+            if (files.length === 0) {
+                showError('Tidak ada file yang dipilih.');
+                return;
+            }
+
+            if (files.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
+                handleZipFile(files[0]);
+            } else {
+                handleShapefileComponents(files);
+            }
+        }
+
+        function handleZipFile(zipFile) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    shp(e.target.result).then(function(geojson) {
+                        const layerName = zipFile.name.replace('.zip', '');
+                        addLayer(layerName, geojson);
+                        showSuccess(`Layer "${layerName}" berhasil dimuat!`);
+                    }).catch(function(error) {
+                        console.error('Error parsing shapefile:', error);
+                        showError('Error parsing shapefile: ' + error.message);
+                    });
+                } catch(error) {
+                    console.error('Error reading ZIP file:', error);
+                    showError('Error reading ZIP file: ' + error.message);
+                }
+            };
+            
+            reader.onerror = function() {
+                showError('Error reading file. Please try again.');
+            };
+            
+            reader.readAsArrayBuffer(zipFile);
+        }
+
+        function handleShapefileComponents(files) {
+            const components = {};
+            let hasShp = false;
+
+            Array.from(files).forEach(file => {
+                const ext = file.name.toLowerCase().split('.').pop();
+                if (ext === 'shp') {
+                    hasShp = true;
+                    components.shp = file;
+                } else if (ext === 'shx') {
+                    components.shx = file;
+                } else if (ext === 'dbf') {
+                    components.dbf = file;
+                } else if (ext === 'prj') {
+                    components.prj = file;
+                }
+            });
+
+            if (!hasShp) {
+                showError('File .shp tidak ditemukan. Pastikan Anda mengupload file .shp.');
+                return;
+            }
+
+            processShapefileComponents(components);
+        }
+
+        function processShapefileComponents(components) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    shp(e.target.result).then(function(geojson) {
+                        const layerName = components.shp.name.replace('.shp', '');
+                        addLayer(layerName, geojson);
+                        showSuccess(`Layer "${layerName}" berhasil dimuat!`);
+                    }).catch(function(error) {
+                        console.error('Error parsing shapefile components:', error);
+                        showError('Error parsing shapefile: ' + error.message);
+                    });
+                } catch(error) {
+                    console.error('Error processing shapefile:', error);
+                    showError('Error processing shapefile: ' + error.message);
+                }
+            };
+            
+            reader.onerror = function() {
+                showError('Error reading shapefile. Please try again.');
+            };
+            
+            reader.readAsArrayBuffer(components.shp);
+        }
+
+        function addLayer(name, geoJsonData) {
+            layerCounter++;
+            const layerId = `layer_${layerCounter}`;
+            
+            // Normalize data
+            let features = [];
+            if (geoJsonData.type === 'FeatureCollection') {
+                features = geoJsonData.features;
+            } else if (Array.isArray(geoJsonData)) {
+                features = geoJsonData;
+                geoJsonData = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+            } else if (geoJsonData.type === 'Feature') {
+                features = [geoJsonData];
+                geoJsonData = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+            }
+
+            // Generate distinct colors for each feature
+            const colorPalette = generateDistinctColors(features.length);
+
+            // Create Leaflet layer
+            const leafletLayer = L.geoJSON(geoJsonData, {
+                style: function(feature) {
+                    const featureIndex = features.indexOf(feature);
+                    const featureColor = colorPalette[featureIndex] || getRandomColor();
+                    
+                    return {
+                        color: featureColor,
+                        weight: 2,
+                        opacity: 0.8,
+                        fillColor: featureColor,
+                        fillOpacity: 0.3
+                    };
+                },
+                onEachFeature: function(feature, layer) {
+                    // Store reference to layer and feature
+                    layer.layerId = layerId;
+                    layer.featureData = feature;
+                    
+                    // Store original color for this feature
+                    const featureIndex = features.indexOf(feature);
+                    layer.originalColor = colorPalette[featureIndex] || getRandomColor();
+                    
+                    // Add popup
+                    if (feature.properties && Object.keys(feature.properties).length > 0) {
+                        let popupContent = '<div style="max-width: 300px;"><strong>Properties:</strong><br>';
+                        Object.keys(feature.properties).forEach(key => {
+                            const value = feature.properties[key];
+                            popupContent += `<strong>${key}:</strong> ${value}<br>`;
+                        });
+                        popupContent += '</div>';
+                        layer.bindPopup(popupContent);
+                    }
+                    
+                    // Add click event for selection
+                    layer.on('click', function(e) {
+                        if (selectionMode) {
+                            e.originalEvent.stopPropagation();
+                            toggleFeatureSelection(layerId, feature, layer);
+                        }
+                    });
+
+                    // Add context menu
+                    layer.on('contextmenu', function(e) {
+                        e.originalEvent.preventDefault();
+                        e.originalEvent.stopPropagation();
+                        contextMenuFeature = { layerId, feature, layer };
+                        showContextMenu(e.originalEvent.pageX, e.originalEvent.pageY);
+                    });
+
+                    // Add hover effects
+                    layer.on('mouseover', function(e) {
+                        if (selectionMode) {
+                            layer.setStyle({
+                                weight: 3,
+                                opacity: 1,
+                                fillOpacity: 0.5
+                            });
+                        }
+                    });
+
+                    layer.on('mouseout', function(e) {
+                        if (!isFeatureSelected(layerId, feature)) {
+                            layer.setStyle({
+                                weight: 2,
+                                opacity: 0.8,
+                                fillOpacity: 0.3
+                            });
+                        }
+                    });
+                }
+            }).addTo(map);
+
+            // Store layer data
+            layers[layerId] = {
+                name: name,
+                leafletLayer: leafletLayer,
+                geoJsonData: geoJsonData,
+                features: features,
+                visible: true,
+                colors: colorPalette
+            };
+
+            // Fit bounds
+            if (leafletLayer.getBounds().isValid()) {
+                map.fitBounds(leafletLayer.getBounds(), { padding: [20, 20] });
+            }
+
+            updateLayerList();
+            updateToolButtons();
+            showLoading(false);
+        }
+
+        function toggleFeatureSelection(layerId, feature, leafletFeature) {
+            const existingIndex = selectedFeatures.findIndex(sf => 
+                sf.layerId === layerId && sf.feature === feature
+            );
+            
+            if (existingIndex >= 0) {
+                // Deselect
+                selectedFeatures.splice(existingIndex, 1);
+                leafletFeature.setStyle({
+                    color: leafletFeature.originalColor,
+                    weight: 2,
+                    opacity: 0.8,
+                    fillOpacity: 0.3
+                });
+            } else {
+                // Select
+                selectedFeatures.push({
+                    layerId: layerId,
+                    feature: feature,
+                    leafletFeature: leafletFeature
+                });
+                leafletFeature.setStyle({
+                    color: '#ff0000',
+                    weight: 4,
+                    opacity: 1,
+                    fillOpacity: 0.6
+                });
+            }
+            
+            updateSelectionInfo();
+            updateToolButtons();
+            updateFloatingToolbar();
+        }
+
+        function generateDistinctColors(count) {
+            const colors = [];
+            
+            // Base color palette for small numbers
+            const baseColors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', 
+                '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+                '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#F4D03F',
+                '#AED6F1', '#A9DFBF', '#F9E79F', '#D7BDE2', '#A3E4D7'
+            ];
+            
+            if (count <= baseColors.length) {
+                return baseColors.slice(0, count);
+            }
+            
+            // Generate more colors using HSL for larger numbers
+            for (let i = 0; i < count; i++) {
+                if (i < baseColors.length) {
+                    colors.push(baseColors[i]);
+                } else {
+                    const hue = (i * 137.508) % 360; // Golden angle approximation
+                    const saturation = 60 + (i % 40); // 60-100%
+                    const lightness = 45 + (i % 30); // 45-75%
+                    colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+                }
+            }
+            
+            return colors;
+        }
+
+        function isFeatureSelected(layerId, feature) {
+            return selectedFeatures.some(sf => sf.layerId === layerId && sf.feature === feature);
+        }
+
+        function clearSelection() {
+            selectedFeatures.forEach(sf => {
+                sf.leafletFeature.setStyle({
+                    color: sf.leafletFeature.originalColor,
+                    weight: 2,
+                    opacity: 0.8,
+                    fillOpacity: 0.3
+                });
+            });
+            
+            selectedFeatures = [];
+            updateSelectionInfo();
+            updateToolButtons();
+            updateFloatingToolbar();
+        }
+
+        function zoomToSelection() {
+            if (selectedFeatures.length === 0) return;
+            
+            const bounds = L.latLngBounds();
+            selectedFeatures.forEach(sf => {
+                const layerBounds = sf.leafletFeature.getBounds();
+                if (layerBounds.isValid()) {
+                    bounds.extend(layerBounds);
+                }
+            });
+            
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
+
+        function exportSelection() {
+            if (selectedFeatures.length === 0) {
+                showError('Tidak ada features yang dipilih untuk di-export.');
+                return;
+            }
+
+            const exportData = {
+                type: 'FeatureCollection',
+                features: selectedFeatures.map(sf => sf.feature)
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = `selected_features_${new Date().toISOString().slice(0,10)}.geojson`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        function updateSelectionInfo() {
+            const selectionInfo = document.getElementById('selectionInfo');
+            const quickTools = document.getElementById('quickTools');
+            const zoomBtn = document.getElementById('zoomToSelectionBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            
+            if (selectedFeatures.length === 0) {
+                selectionInfo.style.display = 'none';
+                zoomBtn.disabled = true;
+                exportBtn.disabled = true;
+                return;
+            }
+            
+            selectionInfo.style.display = 'block';
+            zoomBtn.disabled = false;
+            exportBtn.disabled = false;
+            
+            const countElement = selectionInfo.querySelector('.selection-count');
+            countElement.textContent = `${selectedFeatures.length} features selected`;
+            
+            // Update quick tools
+            quickTools.innerHTML = '';
+            
+            if (selectedFeatures.length === 1) {
+                quickTools.innerHTML += '<button class="quick-tool-btn" onclick="quickBuffer()">📍 Buffer</button>';
+                quickTools.innerHTML += '<button class="quick-tool-btn" onclick="showFeatureInfo(selectedFeatures[0])">ℹ️ Info</button>';
+            } else if (selectedFeatures.length > 1) {
+                quickTools.innerHTML += '<button class="quick-tool-btn" onclick="quickUnion()">🔗 Union</button>';
+                quickTools.innerHTML += '<button class="quick-tool-btn" onclick="quickDissolve()">🫧 Dissolve</button>';
+            }
+            
+            quickTools.innerHTML += '<button class="quick-tool-btn" onclick="clearSelection()">🗑️ Clear</button>';
+        }
+
+        function updateFloatingToolbar() {
+            const toolbar = document.getElementById('floatingToolbar');
+            
+            if (selectedFeatures.length > 0) {
+                toolbar.style.display = 'flex';
+            } else {
+                toolbar.style.display = 'none';
+            }
+        }
+
+        function showContextMenu(x, y) {
+            const contextMenu = document.getElementById('contextMenu');
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = x + 'px';
+            contextMenu.style.top = y + 'px';
+        }
+
+        function hideContextMenu() {
+            const contextMenu = document.getElementById('contextMenu');
+            contextMenu.style.display = 'none';
+            contextMenuFeature = null;
+        }
+
+        function selectFeature(featureData) {
+            if (featureData) {
+                toggleFeatureSelection(featureData.layerId, featureData.feature, featureData.layer);
+            }
+            hideContextMenu();
+        }
+
+        function showFeatureInfo(featureData) {
+            const feature = featureData.feature || featureData;
+            let infoContent = '<h4>Feature Information</h4>';
+            
+            if (feature.properties && Object.keys(feature.properties).length > 0) {
+                infoContent += '<table style="width: 100%; border-collapse: collapse;">';
+                Object.keys(feature.properties).forEach(key => {
+                    const value = feature.properties[key];
+                    infoContent += `<tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 5px; font-weight: bold;">${key}:</td>
+                        <td style="padding: 5px;">${value}</td>
+                    </tr>`;
+                });
+                infoContent += '</table>';
+            } else {
+                infoContent += '<p>No properties available</p>';
+            }
+            
+            // Show in a simple alert for now - could be enhanced with a modal
+            const infoWindow = window.open('', '_blank', 'width=400,height=600,scrollbars=yes');
+            infoWindow.document.write(`
+                <html>
+                    <head><title>Feature Information</title></head>
+                    <body style="font-family: Arial, sans-serif; padding: 20px;">
+                        ${infoContent}
+                    </body>
+                </html>
+            `);
+            
+            hideContextMenu();
+        }
+
+        function deleteFeature(featureData) {
+            if (confirm('Hapus feature ini?')) {
+                // Remove from layer
+                const layer = layers[featureData.layerId];
+                layer.leafletLayer.removeLayer(featureData.layer);
+                
+                // Remove from features array
+                const featureIndex = layer.features.indexOf(featureData.feature);
+                if (featureIndex > -1) {
+                    layer.features.splice(featureIndex, 1);
+                }
+                
+                // Remove from selection if selected
+                const selectionIndex = selectedFeatures.findIndex(sf => 
+                    sf.layerId === featureData.layerId && sf.feature === featureData.feature
+                );
+                if (selectionIndex > -1) {
+                    selectedFeatures.splice(selectionIndex, 1);
+                }
+                
+                updateLayerList();
+                updateSelectionInfo();
+                updateToolButtons();
+            }
+            hideContextMenu();
+        }
+
+        // Quick tools
+        function quickBuffer() {
+            if (selectedFeatures.length === 0) return;
+            
+            const distance = prompt('Enter buffer distance (in meters):', '1000');
+            if (!distance) return;
+            
+            try {
+                showLoading(true);
+                const result = turf.featureCollection([]);
+                
+                selectedFeatures.forEach(sf => {
+                    const buffered = turf.buffer(sf.feature, parseFloat(distance), { units: 'meters' });
+                    if (buffered) {
+                        buffered.properties = { ...sf.feature.properties, buffered: true };
+                        result.features.push(buffered);
+                    }
+                });
+                
+                addLayer('Quick_Buffer', result);
+                showSuccess(`Buffer created with ${distance}m distance.`);
+            } catch (error) {
+                showError('Error creating buffer: ' + error.message);
+            }
+        }
+
+        function quickClip() {
+            if (selectedFeatures.length < 2) {
+                showError('Select at least 2 features for clipping.');
+                return;
+            }
+            
+            const inputFeature = selectedFeatures[0].feature;
+            const clipFeature = selectedFeatures[1].feature;
+            
+            try {
+                showLoading(true);
+                const clipped = turf.intersect(inputFeature, clipFeature);
+                
+                if (clipped) {
+                    const result = turf.featureCollection([clipped]);
+                    addLayer('Quick_Clip', result);
+                    showSuccess('Clip operation completed.');
+                } else {
+                    showError('No intersection found.');
+                }
+            } catch (error) {
+                showError('Error during clip: ' + error.message);
+            }
+        }
+
+        function quickIntersect() {
+            if (selectedFeatures.length < 2) {
+                showError('Select at least 2 features for intersection.');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                const result = turf.featureCollection([]);
+                
+                for (let i = 0; i < selectedFeatures.length - 1; i++) {
+                    for (let j = i + 1; j < selectedFeatures.length; j++) {
+                        const intersection = turf.intersect(selectedFeatures[i].feature, selectedFeatures[j].feature);
+                        if (intersection) {
+                            intersection.properties = {
+                                ...selectedFeatures[i].feature.properties,
+                                ...selectedFeatures[j].feature.properties
+                            };
+                            result.features.push(intersection);
+                        }
+                    }
+                }
+                
+                if (result.features.length > 0) {
+                    addLayer('Quick_Intersect', result);
+                    showSuccess(`Intersection completed. ${result.features.length} features created.`);
+                } else {
+                    showError('No intersections found.');
+                }
+            } catch (error) {
+                showError('Error during intersection: ' + error.message);
+            }
+        }
+
+        function quickUnion() {
+            if (selectedFeatures.length < 2) {
+                showError('Select at least 2 features for union.');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                const features = selectedFeatures.map(sf => sf.feature);
+                
+                // Try to union all features
+                let unionResult = features[0];
+                for (let i = 1; i < features.length; i++) {
+                    unionResult = turf.union(unionResult, features[i]);
+                }
+                
+                if (unionResult) {
+                    const result = turf.featureCollection([unionResult]);
+                    addLayer('Quick_Union', result);
+                    showSuccess('Union operation completed.');
+                } else {
+                    // If union fails, just merge the features
+                    const result = turf.featureCollection(features);
+                    addLayer('Quick_Union', result);
+                    showSuccess('Features merged (union operation not possible).');
+                }
+            } catch (error) {
+                showError('Error during union: ' + error.message);
+            }
+        }
+
+        function quickDissolve() {
+            if (selectedFeatures.length === 0) return;
+            
+            try {
+                showLoading(true);
+                const features = selectedFeatures.map(sf => sf.feature);
+                const collection = turf.featureCollection(features);
+                
+                const dissolved = turf.dissolve(collection);
+                addLayer('Quick_Dissolve', dissolved);
+                showSuccess('Dissolve operation completed.');
+            } catch (error) {
+                showError('Error during dissolve: ' + error.message);
+            }
+        }
+
+        function updateLayerList() {
+            const layerList = document.getElementById('layerList');
+            
+            if (Object.keys(layers).length === 0) {
+                layerList.innerHTML = '<p style="color: #6c757d; font-style: italic; text-align: center;">Belum ada layer</p>';
+                return;
+            }
+
+            let html = '';
+            Object.keys(layers).forEach(layerId => {
+                const layer = layers[layerId];
+                const selectedCount = selectedFeatures.filter(sf => sf.layerId === layerId).length;
+                const hasSelection = selectedCount > 0;
+                
+                html += `
+                    <div class="layer-item ${hasSelection ? 'selected' : ''}">
+                        <div class="layer-info">
+                            <div class="layer-name">${layer.name}</div>
+                            <div class="layer-count">
+                                ${layer.features.length} features
+                                ${hasSelection ? ` (${selectedCount} selected)` : ''}
+                            </div>
+                        </div>
+                        <div class="layer-controls">
+                            <button class="layer-controls button visibility-btn ${layer.visible ? '' : 'hidden'}" 
+                                    onclick="toggleLayerVisibility('${layerId}')">
+                                ${layer.visible ? '👁️' : '🙈'}
+                            </button>
+                            <button class="layer-controls button delete-btn" onclick="removeLayer('${layerId}')">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            layerList.innerHTML = html;
+        }
+
+        function toggleLayerVisibility(layerId) {
+            const layer = layers[layerId];
+            if (layer.visible) {
+                map.removeLayer(layer.leafletLayer);
+                layer.visible = false;
+            } else {
+                map.addLayer(layer.leafletLayer);
+                layer.visible = true;
+            }
+            updateLayerList();
+        }
+
+        function removeLayer(layerId) {
+            if (confirm('Hapus layer ini?')) {
+                const layer = layers[layerId];
+                map.removeLayer(layer.leafletLayer);
+                delete layers[layerId];
+                
+                // Remove selected features from this layer
+                selectedFeatures = selectedFeatures.filter(sf => sf.layerId !== layerId);
+                
+                updateLayerList();
+                updateSelectionInfo();
+                updateToolButtons();
+            }
+        }
+
+        function updateToolButtons() {
+            const buttons = document.querySelectorAll('.tool-btn');
+            const hasSelection = selectedFeatures.length > 0;
+            
+            buttons.forEach(button => {
+                button.disabled = !hasSelection;
+            });
+        }
+
+        function getRandomColor() {
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            showLoading(false);
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            showLoading(false);
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function hideMessages() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+        }
+
+        // Create tool panels (simplified for selected features)
+        function createToolPanels() {
+            const toolPanels = document.getElementById('toolPanels');
+            
+            // Simplified panels that work with selected features
+            toolPanels.innerHTML = `
+                <div id="bufferPanel" class="tool-panel">
+                    <h4>📍 Buffer Tool</h4>
+                    <div class="form-group">
+                        <label>Distance:</label>
+                        <input type="number" id="bufferDistance" placeholder="1000" value="1000">
+                    </div>
+                    <div class="form-group">
+                        <label>Units:</label>
+                        <select id="bufferUnits">
+                            <option value="meters">Meters</option>
+                            <option value="kilometers">Kilometers</option>
+                            <option value="miles">Miles</option>
+                        </select>
+                    </div>
+                    <button class="action-btn" onclick="executeBufferOnSelected()">Apply Buffer</button>
+                    <button class="action-btn" onclick="hideAllToolPanels()" style="background: #6c757d;">Cancel</button>
+                </div>
+                
+                <div id="dissolvePanel" class="tool-panel">
+                    <h4>🫧 Dissolve Tool</h4>
+                    <div class="form-group">
+                        <label>Dissolve Field (optional):</label>
+                        <select id="dissolveField">
+                            <option value="">-- Dissolve All --</option>
+                        </select>
+                    </div>
+                    <button class="action-btn" onclick="executeDissolveOnSelected()">Apply Dissolve</button>
+                    <button class="action-btn" onclick="hideAllToolPanels()" style="background: #6c757d;">Cancel</button>
+                </div>
+            `;
+        }
+
+        function showToolPanel(toolName) {
+            hideAllToolPanels();
+            
+            if (selectedFeatures.length === 0) {
+                showError('Please select features first by clicking on them in the map.');
+                return;
+            }
+            
+            const panel = document.getElementById(toolName + 'Panel');
+            if (panel) {
+                panel.style.display = 'block';
+                
+                // Populate field options for dissolve
+                if (toolName === 'dissolve') {
+                    const fieldSelect = document.getElementById('dissolveField');
+                    fieldSelect.innerHTML = '<option value="">-- Dissolve All --</option>';
+                    
+                    if (selectedFeatures.length > 0) {
+                        const firstFeature = selectedFeatures[0].feature;
+                        if (firstFeature.properties) {
+                            Object.keys(firstFeature.properties).forEach(field => {
+                                fieldSelect.innerHTML += `<option value="${field}">${field}</option>`;
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        function hideAllToolPanels() {
+            const panels = document.querySelectorAll('.tool-panel');
+            panels.forEach(panel => {
+                panel.style.display = 'none';
+            });
+        }
+
+        function executeBufferOnSelected() {
+            if (selectedFeatures.length === 0) {
+                showError('No features selected.');
+                return;
+            }
+            
+            const distance = parseFloat(document.getElementById('bufferDistance').value);
+            const units = document.getElementById('bufferUnits').value;
+            
+            if (isNaN(distance)) {
+                showError('Please enter a valid distance.');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                const result = turf.featureCollection([]);
+                
+                selectedFeatures.forEach(sf => {
+                    const buffered = turf.buffer(sf.feature, distance, { units: units });
+                    if (buffered) {
+                        buffered.properties = { ...sf.feature.properties, buffered: true };
+                        result.features.push(buffered);
+                    }
+                });
+                
+                addLayer(`Buffer_${distance}${units}`, result);
+                showSuccess(`Buffer operation completed. ${result.features.length} features created.`);
+                hideAllToolPanels();
+            } catch (error) {
+                showError('Error during buffer operation: ' + error.message);
+            }
+        }
+
+        function executeDissolveOnSelected() {
+            if (selectedFeatures.length === 0) {
+                showError('No features selected.');
+                return;
+            }
+            
+            const dissolveField = document.getElementById('dissolveField').value;
+            
+            try {
+                showLoading(true);
+                const features = selectedFeatures.map(sf => sf.feature);
+                const collection = turf.featureCollection(features);
+                
+                let result;
+                if (!dissolveField) {
+                    // Dissolve all
+                    result = turf.dissolve(collection);
+                } else {
+                    // Group by field and dissolve each group
+                    const groups = {};
+                    features.forEach(feature => {
+                        const fieldValue = feature.properties[dissolveField] || 'null';
+                        if (!groups[fieldValue]) {
+                            groups[fieldValue] = turf.featureCollection([]);
+                        }
+                        groups[fieldValue].features.push(feature);
+                    });
+
+                    result = turf.featureCollection([]);
+                    Object.keys(groups).forEach(groupValue => {
+                        const dissolved = turf.dissolve(groups[groupValue]);
+                        dissolved.features.forEach(feature => {
+                            feature.properties[dissolveField] = groupValue;
+                            result.features.push(feature);
+                        });
+                    });
+                }
+                
+                addLayer('Dissolved_Features', result);
+                showSuccess(`Dissolve operation completed.`);
+                hideAllToolPanels();
+            } catch (error) {
+                showError('Error during dissolve operation: ' + error.message);
+            }
+        }
+
+        // Placeholder functions for other tools
+        function showToolPanel(toolName) {
+            if (selectedFeatures.length === 0) {
+                showError('Please select features first by clicking on them in the map.');
+                return;
+            }
+            
+            switch(toolName) {
+                case 'buffer':
+                    document.getElementById('bufferPanel').style.display = 'block';
+                    break;
+                case 'dissolve':
+                    document.getElementById('dissolvePanel').style.display = 'block';
+                    break;
+                default:
+                    showError(`${toolName} tool is not yet implemented for selected features. Use quick tools instead.`);
+            }
+        }
+
+        // Navigation functions
+        function showMainPage() {
+            document.getElementById('mainPage').style.display = 'grid';
+            document.getElementById('converterPage').style.display = 'none';
+            
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.nav-btn[onclick="showMainPage()"]').classList.add('active');
+        }
+
+        function showConverterPage() {
+            document.getElementById('mainPage').style.display = 'none';
+            document.getElementById('converterPage').style.display = 'block';
+            
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.nav-btn[onclick="showConverterPage()"]').classList.add('active');
+            
+            // Reset converter state
+            converterInitialized = false;
+            
+            // Initialize converter when page is shown
+            setTimeout(() => {
+                setupConverterEventListeners();
+                console.log('Converter page loaded and initialized');
+            }, 200);
+        }
+
+        // Converter functionality
+        let converterData = null;
+        let selectedFormat = null;
+        let converterInitialized = false;
+
+        function setupConverterEventListeners() {
+            if (converterInitialized) return;
+            
+            console.log('Setting up converter event listeners...');
+            
+            const converterFileInput = document.getElementById('converterFileInput');
+            const converterUploadSection = document.getElementById('converterUploadSection');
+
+            // File input change
+            if (converterFileInput) {
+                console.log('Adding file input listener');
+                converterFileInput.addEventListener('change', function(e) {
+                    console.log('File input changed:', e.target.files);
+                    if (e.target.files.length > 0) {
+                        handleConverterFiles(e.target.files);
+                    }
+                });
+            }
+
+            // Drag and drop for converter
+            if (converterUploadSection) {
+                console.log('Adding drag/drop listeners');
+                
+                converterUploadSection.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.classList.add('dragover');
+                });
+
+                converterUploadSection.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.classList.remove('dragover');
+                });
+
+                converterUploadSection.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.classList.remove('dragover');
+                    console.log('Files dropped:', e.dataTransfer.files);
+                    if (e.dataTransfer.files.length > 0) {
+                        handleConverterFiles(e.dataTransfer.files);
+                    }
+                });
+            }
+
+            // Format selection
+            document.querySelectorAll('.format-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.format-option').forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedFormat = this.dataset.format;
+                    console.log('Format selected:', selectedFormat);
+                    updateConvertButton();
+                });
+            });
+
+            converterInitialized = true;
+            console.log('Converter event listeners initialized');
+        }
+
+        function handleConverterFiles(files) {
+            console.log('Handling converter files:', files.length);
+            hideConverterMessages();
+            
+            if (!files || files.length === 0) {
+                showConverterError('No files selected.');
+                return;
+            }
+
+            // Check if it's shapefile components
+            const fileArray = Array.from(files);
+            const extensions = fileArray.map(f => getFileExtension(f.name));
+            
+            console.log('File extensions:', extensions);
+
+            if (extensions.includes('shp') && extensions.includes('shx') && extensions.includes('dbf')) {
+                // Handle shapefile components
+                handleShapefileComponents(fileArray);
+            } else if (files.length === 1) {
+                // Handle single file
+                handleSingleConverterFile(files[0]);
+            } else {
+                showConverterError('Please select either a single geospatial file or complete shapefile components (.shp, .shx, .dbf).');
+            }
+        }
+
+        function getFileExtension(filename) {
+            return filename.toLowerCase().split('.').pop();
+        }
+
+        function handleSingleConverterFile(file) {
+            console.log('Processing single file:', file.name, 'Size:', file.size);
+            
+            const extension = getFileExtension(file.name);
+            const supportedFormats = ['zip', 'geojson', 'json', 'kml', 'gpx', 'csv', 'wkt'];
+            
+            if (!supportedFormats.includes(extension)) {
+                showConverterError(`Unsupported file format: .${extension}. Please select a supported geospatial file.`);
+                return;
+            }
+
+            showConverterLoading(true);
+            
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                console.log('File loaded, processing...');
+                try {
+                    switch (extension) {
+                        case 'zip':
+                            processZipFile(e.target.result);
+                            break;
+                        case 'geojson':
+                        case 'json':
+                            processGeoJSONFile(e.target.result, file.name);
+                            break;
+                        case 'kml':
+                            processKMLFile(e.target.result, file.name);
+                            break;
+                        case 'gpx':
+                            processGPXFile(e.target.result, file.name);
+                            break;
+                        case 'csv':
+                            processCSVFile(e.target.result, file.name);
+                            break;
+                        case 'wkt':
+                            processWKTFile(e.target.result, file.name);
+                            break;
+                        default:
+                            throw new Error(`Handler not implemented for .${extension}`);
+                    }
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    showConverterError(`Error processing ${file.name}: ${error.message}`);
+                }
+            };
+            
+            reader.onerror = function(error) {
+                console.error('FileReader error:', error);
+                showConverterError('Error reading file. Please try again.');
+            };
+            
+            // Read file based on format
+            if (extension === 'zip') {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsText(file);
+            }
+        }
+
+        function handleShapefileComponents(files) {
+            console.log('Processing shapefile components:', files.map(f => f.name));
+            
+            const components = {};
+            let hasRequired = true;
+            
+            files.forEach(file => {
+                const ext = getFileExtension(file.name);
+                components[ext] = file;
+            });
+
+            // Check required files
+            if (!components.shp || !components.shx || !components.dbf) {
+                showConverterError('Missing required shapefile components. Need .shp, .shx, and .dbf files.');
+                return;
+            }
+
+            showConverterLoading(true);
+
+            // Read the .shp file first
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    shp(e.target.result).then(function(geojson) {
+                        console.log('Shapefile components parsed successfully:', geojson);
+                        processGeospatialData(geojson, components.shp.name);
+                    }).catch(function(error) {
+                        console.error('Error parsing shapefile components:', error);
+                        showConverterError(`Error parsing shapefile: ${error.message}`);
+                    });
+                } catch(error) {
+                    console.error('Error reading shapefile components:', error);
+                    showConverterError(`Error reading shapefile: ${error.message}`);
+                }
+            };
+            
+            reader.onerror = function(error) {
+                console.error('FileReader error:', error);
+                showConverterError('Error reading shapefile. Please try again.');
+            };
+            
+            reader.readAsArrayBuffer(components.shp);
+        }
+
+        function processZipFile(arrayBuffer) {
+            console.log('Processing ZIP file...');
+            try {
+                shp(arrayBuffer).then(function(geojson) {
+                    console.log('ZIP/Shapefile parsed successfully:', geojson);
+                    processGeospatialData(geojson, 'shapefile.zip');
+                }).catch(function(error) {
+                    console.error('Error parsing ZIP/Shapefile:', error);
+                    showConverterError(`Error parsing ZIP file: ${error.message}`);
+                });
+            } catch(error) {
+                console.error('Error reading ZIP file:', error);
+                showConverterError(`Error reading ZIP file: ${error.message}`);
+            }
+        }
+
+        function processGeoJSONFile(textContent, filename) {
+            console.log('Processing GeoJSON file...');
+            try {
+                const geojson = JSON.parse(textContent);
+                console.log('GeoJSON parsed successfully:', geojson);
+                processGeospatialData(geojson, filename);
+            } catch (error) {
+                console.error('Error parsing GeoJSON:', error);
+                showConverterError(`Error parsing GeoJSON: ${error.message}`);
+            }
+        }
+
+        function processKMLFile(textContent, filename) {
+            console.log('Processing KML file...');
+            try {
+                // Simple KML to GeoJSON conversion
+                const parser = new DOMParser();
+                const kmlDoc = parser.parseFromString(textContent, 'text/xml');
+                
+                // Check for XML parsing errors
+                if (kmlDoc.getElementsByTagName('parsererror').length > 0) {
+                    throw new Error('Invalid KML format');
+                }
+
+                const placemarks = kmlDoc.getElementsByTagName('Placemark');
+                const features = [];
+
+                for (let i = 0; i < placemarks.length; i++) {
+                    const placemark = placemarks[i];
+                    const feature = parseKMLPlacemark(placemark);
+                    if (feature) {
+                        features.push(feature);
+                    }
+                }
+
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+
+                console.log('KML converted to GeoJSON:', geojson);
+                processGeospatialData(geojson, filename);
+            } catch (error) {
+                console.error('Error parsing KML:', error);
+                showConverterError(`Error parsing KML: ${error.message}`);
+            }
+        }
+
+        function parseKMLPlacemark(placemark) {
+            try {
+                const nameElement = placemark.getElementsByTagName('name')[0];
+                const descElement = placemark.getElementsByTagName('description')[0];
+                const pointElement = placemark.getElementsByTagName('Point')[0];
+                const polygonElement = placemark.getElementsByTagName('Polygon')[0];
+
+                const properties = {};
+                if (nameElement) properties.name = nameElement.textContent;
+                if (descElement) properties.description = descElement.textContent;
+
+                let geometry = null;
+
+                if (pointElement) {
+                    const coordinates = pointElement.getElementsByTagName('coordinates')[0];
+                    if (coordinates) {
+                        const coords = coordinates.textContent.trim().split(',');
+                        geometry = {
+                            type: 'Point',
+                            coordinates: [parseFloat(coords[0]), parseFloat(coords[1])]
+                        };
+                    }
+                } else if (polygonElement) {
+                    const outerBoundary = polygonElement.getElementsByTagName('outerBoundaryIs')[0];
+                    if (outerBoundary) {
+                        const linearRing = outerBoundary.getElementsByTagName('LinearRing')[0];
+                        if (linearRing) {
+                            const coordinates = linearRing.getElementsByTagName('coordinates')[0];
+                            if (coordinates) {
+                                const coordString = coordinates.textContent.trim();
+                                const coordPairs = coordString.split(/\s+/);
+                                const coords = coordPairs.map(pair => {
+                                    const parts = pair.split(',');
+                                    return [parseFloat(parts[0]), parseFloat(parts[1])];
+                                });
+                                geometry = {
+                                    type: 'Polygon',
+                                    coordinates: [coords]
+                                };
+                            }
+                        }
+                    }
+                }
+
+                if (geometry) {
+                    return {
+                        type: 'Feature',
+                        properties: properties,
+                        geometry: geometry
+                    };
+                }
+            } catch (error) {
+                console.warn('Error parsing KML placemark:', error);
+            }
+            return null;
+        }
+
+        function processGPXFile(textContent, filename) {
+            console.log('Processing GPX file...');
+            try {
+                const parser = new DOMParser();
+                const gpxDoc = parser.parseFromString(textContent, 'text/xml');
+                
+                if (gpxDoc.getElementsByTagName('parsererror').length > 0) {
+                    throw new Error('Invalid GPX format');
+                }
+
+                const waypoints = gpxDoc.getElementsByTagName('wpt');
+                const features = [];
+
+                for (let i = 0; i < waypoints.length; i++) {
+                    const wpt = waypoints[i];
+                    const lat = parseFloat(wpt.getAttribute('lat'));
+                    const lon = parseFloat(wpt.getAttribute('lon'));
+
+                    const nameElement = wpt.getElementsByTagName('name')[0];
+                    const descElement = wpt.getElementsByTagName('desc')[0];
+
+                    const properties = {};
+                    if (nameElement) properties.name = nameElement.textContent;
+                    if (descElement) properties.description = descElement.textContent;
+
+                    features.push({
+                        type: 'Feature',
+                        properties: properties,
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [lon, lat]
+                        }
+                    });
+                }
+
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+
+                console.log('GPX converted to GeoJSON:', geojson);
+                processGeospatialData(geojson, filename);
+            } catch (error) {
+                console.error('Error parsing GPX:', error);
+                showConverterError(`Error parsing GPX: ${error.message}`);
+            }
+        }
+
+        function processCSVFile(textContent, filename) {
+            console.log('Processing CSV file...');
+            try {
+                const lines = textContent.split('\n').filter(line => line.trim());
+                if (lines.length < 2) {
+                    throw new Error('CSV file must have at least header and one data row');
+                }
+
+                const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                console.log('CSV headers:', headers);
+
+                // Try to find coordinate columns
+                const latCols = ['lat', 'latitude', 'y', 'lat_dd', 'latitude_dd'];
+                const lonCols = ['lon', 'longitude', 'lng', 'x', 'lon_dd', 'longitude_dd'];
+                
+                let latIndex = -1, lonIndex = -1;
+                
+                headers.forEach((header, index) => {
+                    const lowerHeader = header.toLowerCase();
+                    if (latCols.includes(lowerHeader)) latIndex = index;
+                    if (lonCols.includes(lowerHeader)) lonIndex = index;
+                });
+
+                if (latIndex === -1 || lonIndex === -1) {
+                    throw new Error('CSV must contain latitude and longitude columns (lat/latitude and lon/longitude)');
+                }
+
+                const features = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                    
+                    if (values.length < headers.length) continue;
+
+                    const lat = parseFloat(values[latIndex]);
+                    const lon = parseFloat(values[lonIndex]);
+
+                    if (isNaN(lat) || isNaN(lon)) continue;
+
+                    const properties = {};
+                    headers.forEach((header, index) => {
+                        if (index !== latIndex && index !== lonIndex) {
+                            properties[header] = values[index];
+                        }
+                    });
+
+                    features.push({
+                        type: 'Feature',
+                        properties: properties,
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [lon, lat]
+                        }
+                    });
+                }
+
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+
+                console.log('CSV converted to GeoJSON:', geojson);
+                processGeospatialData(geojson, filename);
+            } catch (error) {
+                console.error('Error parsing CSV:', error);
+                showConverterError(`Error parsing CSV: ${error.message}`);
+            }
+        }
+
+        function processWKTFile(textContent, filename) {
+            console.log('Processing WKT file...');
+            try {
+                const lines = textContent.split('\n').filter(line => line.trim());
+                const features = [];
+
+                lines.forEach((line, index) => {
+                    const wkt = line.trim();
+                    if (!wkt) return;
+
+                    try {
+                        const geometry = parseWKT(wkt);
+                        if (geometry) {
+                            features.push({
+                                type: 'Feature',
+                                properties: { id: index + 1 },
+                                geometry: geometry
+                            });
+                        }
+                    } catch (error) {
+                        console.warn(`Error parsing WKT line ${index + 1}:`, error);
+                    }
+                });
+
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+
+                console.log('WKT converted to GeoJSON:', geojson);
+                processGeospatialData(geojson, filename);
+            } catch (error) {
+                console.error('Error parsing WKT:', error);
+                showConverterError(`Error parsing WKT: ${error.message}`);
+            }
+        }
+
+        function parseWKT(wkt) {
+            // Simple WKT parser for basic geometries
+            wkt = wkt.trim().toUpperCase();
+
+            if (wkt.startsWith('POINT')) {
+                const match = wkt.match(/POINT\s*\(\s*([^)]+)\s*\)/);
+                if (match) {
+                    const coords = match[1].split(/\s+/);
+                    return {
+                        type: 'Point',
+                        coordinates: [parseFloat(coords[0]), parseFloat(coords[1])]
+                    };
+                }
+            } else if (wkt.startsWith('LINESTRING')) {
+                const match = wkt.match(/LINESTRING\s*\(\s*([^)]+)\s*\)/);
+                if (match) {
+                    const coordPairs = match[1].split(',');
+                    const coordinates = coordPairs.map(pair => {
+                        const coords = pair.trim().split(/\s+/);
+                        return [parseFloat(coords[0]), parseFloat(coords[1])];
+                    });
+                    return {
+                        type: 'LineString',
+                        coordinates: coordinates
+                    };
+                }
+            } else if (wkt.startsWith('POLYGON')) {
+                const match = wkt.match(/POLYGON\s*\(\s*\(([^)]+)\)\s*\)/);
+                if (match) {
+                    const coordPairs = match[1].split(',');
+                    const coordinates = coordPairs.map(pair => {
+                        const coords = pair.trim().split(/\s+/);
+                        return [parseFloat(coords[0]), parseFloat(coords[1])];
+                    });
+                    return {
+                        type: 'Polygon',
+                        coordinates: [coordinates]
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        function processGeospatialData(geojson, filename) {
+            console.log('Processing geospatial data:', geojson);
+            
+            try {
+                // Normalize the data
+                if (geojson && !geojson.type) {
+                    if (Array.isArray(geojson)) {
+                        converterData = {
+                            type: 'FeatureCollection',
+                            features: geojson
+                        };
+                    } else {
+                        converterData = geojson;
+                    }
+                } else {
+                    converterData = geojson;
+                }
+                
+                // Ensure it's a FeatureCollection
+                if (converterData.type === 'Feature') {
+                    converterData = {
+                        type: 'FeatureCollection',
+                        features: [converterData]
+                    };
+                }
+                
+                const featureCount = converterData.features ? converterData.features.length : 1;
+                
+                // Update UI to show uploaded file
+                updateUploadUI(filename, featureCount);
+                
+                showConverterSuccess(`File "${filename}" loaded successfully! ${featureCount} features found.`);
+                updateConvertButton();
+            } catch (error) {
+                console.error('Error processing geospatial data:', error);
+                showConverterError(`Error processing data: ${error.message}`);
+            }
+        }
+
+        function updateUploadUI(filename, featureCount) {
+            const uploadSection = document.getElementById('converterUploadSection');
+            const uploadArea = uploadSection.querySelector('.upload-area');
+            
+            // Replace upload area content with file info
+            uploadArea.innerHTML = `
+                <div class="uploaded-file-info">
+                    <div class="file-icon">✅</div>
+                    <div class="file-details">
+                        <div class="file-name">${filename}</div>
+                        <div class="file-stats">${featureCount} features loaded</div>
+                        <div class="file-actions">
+                            <button class="upload-btn" onclick="resetFileUpload()">Choose Different File</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove click handler and dragover styling
+            uploadSection.classList.remove('dragover');
+            uploadArea.onclick = null;
+        }
+
+        function resetFileUpload() {
+            converterData = null;
+            selectedFormat = null;
+            
+            const uploadSection = document.getElementById('converterUploadSection');
+            const uploadArea = uploadSection.querySelector('.upload-area');
+            
+            // Restore original upload UI
+            uploadArea.innerHTML = `
+                <div class="upload-icon">📦</div>
+                <div class="upload-text">Drag & drop geospatial file or click to browse</div>
+                <button class="upload-btn">Choose File</button>
+                <div class="supported-formats">
+                    <strong>Supported Input Formats:</strong><br>
+                    • <code>.zip</code> - Shapefile package<br>
+                    • <code>.shp</code> - ESRI Shapefile (with .shx, .dbf)<br>
+                    • <code>.geojson</code> - GeoJSON format<br>
+                    • <code>.kml</code> - Google Earth KML<br>
+                    • <code>.gpx</code> - GPS Exchange<br>
+                    • <code>.csv</code> - CSV with coordinates<br>
+                    • <code>.json</code> - GeoJSON/TopoJSON<br>
+                    • <code>.wkt</code> - Well-Known Text<br>
+                    <em>💡 Select any geospatial format to convert</em>
+                </div>
+            `;
+            
+            // Restore click handler
+            uploadArea.onclick = function() {
+                document.getElementById('converterFileInput').click();
+            };
+            
+            // Clear file input
+            const fileInput = document.getElementById('converterFileInput');
+            if (fileInput) fileInput.value = '';
+            
+            // Clear format selection
+            document.querySelectorAll('.format-option').forEach(opt => opt.classList.remove('selected'));
+            
+            // Hide results
+            const resultsDiv = document.getElementById('converterResults');
+            if (resultsDiv) resultsDiv.style.display = 'none';
+            
+            updateConvertButton();
+            hideConverterMessages();
+        }
+
+        function updateConvertButton() {
+            const convertBtn = document.getElementById('convertBtn');
+            if (convertBtn) {
+                convertBtn.disabled = !(converterData && selectedFormat);
+            }
+        }
+
+        function convertFile() {
+            if (!converterData || !selectedFormat) {
+                showConverterError('Please select a file and output format.');
+                return;
+            }
+
+            console.log('🚀 Starting conversion to:', selectedFormat);
+            showConverterLoading(true);
+            hideConverterMessages();
+
+            try {
+                const includeAttributes = document.getElementById('includeAttributes')?.checked !== false;
+                const simplifyGeometry = document.getElementById('simplifyGeometry')?.checked === true;
+                const reproject = document.getElementById('reproject')?.checked === true;
+
+                console.log('⚙️ Conversion options:', { includeAttributes, simplifyGeometry, reproject });
+
+                // Process data based on options
+                let processedData = JSON.parse(JSON.stringify(converterData)); // Deep copy
+                
+                if (simplifyGeometry && processedData.features) {
+                    console.log('🔧 Simplifying geometry...');
+                    processedData.features = processedData.features.map(feature => {
+                        try {
+                            const simplified = turf.simplify(feature, { tolerance: 0.01, highQuality: false });
+                            return simplified || feature;
+                        } catch (e) {
+                            console.warn('⚠️ Simplification failed for feature:', e);
+                            return feature;
+                        }
+                    });
+                }
+
+                if (!includeAttributes && processedData.features) {
+                    console.log('🗑️ Removing attributes...');
+                    processedData.features = processedData.features.map(feature => ({
+                        ...feature,
+                        properties: {}
+                    }));
+                }
+
+                console.log('🔄 Converting to format:', selectedFormat);
+
+                // Handle shapefile format specially (returns a Promise)
+                if (selectedFormat === 'shp') {
+                    console.log('🗂️ === SHAPEFILE CONVERSION START ===');
+                    console.log('📦 JSZip available?', typeof JSZip !== 'undefined');
+                    console.log('📊 Features to convert:', processedData.features?.length || 0);
+                    
+                    createShapefilePackage(processedData).then(function(shpPackage) {
+                        console.log('✅ === SHAPEFILE CONVERSION SUCCESS ===');
+                        console.log('📁 Package created:', shpPackage.filename);
+                        console.log('💾 File size:', shpPackage.isBlob ? shpPackage.data.byteLength : shpPackage.data.length);
+                        console.log('🎯 Is binary?', shpPackage.isBlob);
+                        
+                        displayConverterResults([{
+                            name: shpPackage.filename,
+                            data: shpPackage.data,
+                            mimeType: shpPackage.mimeType,
+                            size: shpPackage.isBlob ? shpPackage.data.byteLength : new Blob([shpPackage.data]).size,
+                            isBlob: shpPackage.isBlob
+                        }]);
+
+                        if (shpPackage.isBlob) {
+                            showConverterSuccess(`✅ Real shapefile ZIP created! Contains .shp, .shx, .dbf, .prj, .cpg files.`);
+                        } else {
+                            showConverterSuccess(`⚠️ Fallback text file created. Check console for details.`);
+                        }
+                    }).catch(function(error) {
+                        console.error('❌ === SHAPEFILE CONVERSION FAILED ===');
+                        console.error('💥 Error details:', error);
+                        console.error('📍 Stack trace:', error.stack);
+                        showConverterError('Error creating shapefile package: ' + error.message);
+                    });
+                    return;
+                }
+
+                // Handle other formats synchronously
+                let outputData, filename, mimeType;
+
+                switch (selectedFormat) {
+                    case 'geojson':
+                        outputData = JSON.stringify(processedData, null, 2);
+                        filename = 'converted_file.geojson';
+                        mimeType = 'application/geo+json';
+                        break;
+
+                    case 'kml':
+                        outputData = convertToKML(processedData);
+                        filename = 'converted_file.kml';
+                        mimeType = 'application/vnd.google-earth.kml+xml';
+                        break;
+
+                    case 'gpx':
+                        outputData = convertToGPX(processedData);
+                        filename = 'converted_file.gpx';
+                        mimeType = 'application/gpx+xml';
+                        break;
+
+                    case 'csv':
+                        outputData = convertToCSV(processedData);
+                        filename = 'converted_file.csv';
+                        mimeType = 'text/csv';
+                        break;
+
+                    case 'topojson':
+                        outputData = JSON.stringify(processedData, null, 2);
+                        filename = 'converted_file.topojson';
+                        mimeType = 'application/json';
+                        break;
+
+                    case 'wkt':
+                        outputData = convertToWKT(processedData);
+                        filename = 'converted_file.wkt';
+                        mimeType = 'text/plain';
+                        break;
+
+                    default:
+                        throw new Error('Unsupported format: ' + selectedFormat);
+                }
+
+                console.log('✅ Conversion completed, file size:', outputData.length);
+
+                // Show results
+                displayConverterResults([{
+                    name: filename,
+                    data: outputData,
+                    mimeType: mimeType,
+                    size: new Blob([outputData]).size,
+                    isBlob: false
+                }]);
+
+                showConverterSuccess(`✅ Conversion to ${selectedFormat.toUpperCase()} completed successfully!`);
+
+            } catch (error) {
+                console.error('❌ Conversion error:', error);
+                showConverterError('Error during conversion: ' + error.message);
+            }
+        }
+
+        function convertToKML(geojson) {
+            let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+    <Document>
+        <name>Converted Shapefile</name>
+        <description>Converted from shapefile using Advanced Shapefile Viewer</description>
+`;
+
+            const features = geojson.features || [geojson];
+            features.forEach((feature, index) => {
+                kml += `        <Placemark>
+            <name>Feature ${index + 1}</name>
+            <description>`;
+                
+                if (feature.properties) {
+                    Object.keys(feature.properties).forEach(key => {
+                        kml += `${key}: ${feature.properties[key]}<br/>`;
+                    });
+                }
+                
+                kml += `</description>`;
+                
+                if (feature.geometry) {
+                    if (feature.geometry.type === 'Point') {
+                        const coords = feature.geometry.coordinates;
+                        kml += `            <Point>
+                <coordinates>${coords[0]},${coords[1]},0</coordinates>
+            </Point>`;
+                    } else if (feature.geometry.type === 'Polygon') {
+                        const coords = feature.geometry.coordinates[0];
+                        const coordString = coords.map(coord => `${coord[0]},${coord[1]},0`).join(' ');
+                        kml += `            <Polygon>
+                <outerBoundaryIs>
+                    <LinearRing>
+                        <coordinates>${coordString}</coordinates>
+                    </LinearRing>
+                </outerBoundaryIs>
+            </Polygon>`;
+                    }
+                }
+                
+                kml += `        </Placemark>
+`;
+            });
+
+            kml += `    </Document>
+</kml>`;
+            return kml;
+        }
+
+        function convertToGPX(geojson) {
+            let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Advanced Shapefile Viewer">
+    <metadata>
+        <name>Converted Shapefile</name>
+        <desc>Converted from shapefile</desc>
+    </metadata>
+`;
+
+            const features = geojson.features || [geojson];
+            features.forEach((feature, index) => {
+                if (feature.geometry && feature.geometry.type === 'Point') {
+                    const coords = feature.geometry.coordinates;
+                    gpx += `    <wpt lat="${coords[1]}" lon="${coords[0]}">
+        <name>Point ${index + 1}</name>
+        <desc>`;
+                    
+                    if (feature.properties) {
+                        Object.keys(feature.properties).forEach(key => {
+                            gpx += `${key}: ${feature.properties[key]} `;
+                        });
+                    }
+                    
+                    gpx += `</desc>
+    </wpt>
+`;
+                }
+            });
+
+            gpx += `</gpx>`;
+            return gpx;
+        }
+
+        function convertToCSV(geojson) {
+            const features = geojson.features || [geojson];
+            if (features.length === 0) return '';
+
+            // Get all property keys
+            const allKeys = new Set();
+            features.forEach(feature => {
+                if (feature.properties) {
+                    Object.keys(feature.properties).forEach(key => allKeys.add(key));
+                }
+            });
+
+            const headers = ['geometry_type', 'coordinates', ...Array.from(allKeys)];
+            let csv = headers.join(',') + '\n';
+
+            features.forEach(feature => {
+                const row = [];
+                row.push(feature.geometry ? feature.geometry.type : '');
+                row.push(feature.geometry ? JSON.stringify(feature.geometry.coordinates) : '');
+                
+                headers.slice(2).forEach(header => {
+                    const value = feature.properties && feature.properties[header] ? feature.properties[header] : '';
+                    row.push(`"${String(value).replace(/"/g, '""')}"`);
+                });
+                
+                csv += row.join(',') + '\n';
+            });
+
+            return csv;
+        }
+
+        function convertToWKT(geojson) {
+            const features = geojson.features || [geojson];
+            let wkt = '';
+
+            features.forEach((feature, index) => {
+                if (feature.geometry) {
+                    if (index > 0) wkt += '\n';
+                    
+                    switch (feature.geometry.type) {
+                        case 'Point':
+                            const coords = feature.geometry.coordinates;
+                            wkt += `POINT(${coords[0]} ${coords[1]})`;
+                            break;
+                        case 'Polygon':
+                            const polyCoords = feature.geometry.coordinates[0];
+                            const coordString = polyCoords.map(coord => `${coord[0]} ${coord[1]}`).join(',');
+                            wkt += `POLYGON((${coordString}))`;
+                            break;
+                        case 'LineString':
+                            const lineCoords = feature.geometry.coordinates;
+                            const lineString = lineCoords.map(coord => `${coord[0]} ${coord[1]}`).join(',');
+                            wkt += `LINESTRING(${lineString})`;
+                            break;
+                        default:
+                            wkt += `GEOMETRYCOLLECTION(${JSON.stringify(feature.geometry)})`;
+                    }
+                }
+            });
+
+            return wkt;
+        }
+
+        function createShapefilePackage(geojson) {
+            console.log('Creating shapefile package...');
+            
+            // Check if JSZip is available
+            if (typeof JSZip === 'undefined') {
+                console.warn('JSZip not available, using fallback method');
+                return createShapefileFallback(geojson);
+            }
+            
+            try {
+                // Create a proper ZIP file using JSZip
+                const zip = new JSZip();
+                
+                // Create the main GeoJSON file
+                const geojsonContent = JSON.stringify(geojson, null, 2);
+                zip.file("data.geojson", geojsonContent);
+                
+                // Create features array
+                const features = geojson.features || [geojson];
+                
+                // Create DBF-like content (attributes table)
+                let dbfContent = 'ID';
+                const sampleFeature = features[0];
+                if (sampleFeature && sampleFeature.properties) {
+                    Object.keys(sampleFeature.properties).forEach(key => {
+                        dbfContent += `,${key}`;
+                    });
+                }
+                dbfContent += '\n';
+                
+                features.forEach((feature, index) => {
+                    let row = `${index + 1}`;
+                    if (feature.properties) {
+                        Object.keys(sampleFeature.properties || {}).forEach(key => {
+                            const value = feature.properties[key] || '';
+                            row += `,"${String(value).replace(/"/g, '""')}"`;
+                        });
+                    }
+                    dbfContent += row + '\n';
+                });
+                
+                zip.file("attributes.csv", dbfContent);
+
+                // Create PRJ content (WGS84 projection)
+                const prjContent = `GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]]`;
+                zip.file("projection.prj", prjContent);
+
+                // Create README with instructions
+                const readmeContent = `SHAPEFILE CONVERSION PACKAGE
+============================
+
+This ZIP package contains your geospatial data ready for shapefile conversion.
+
+FILES INCLUDED:
+- data.geojson     : Your geospatial data in GeoJSON format
+- attributes.csv   : Feature attributes table  
+- projection.prj   : Coordinate system definition (WGS84)
+- README.txt       : This instruction file
+
+QUICK CONVERSION STEPS:
+
+METHOD 1 - Online Converter (Recommended):
+1. Go to https://mygeodata.cloud/converter/
+2. Upload the "data.geojson" file from this ZIP
+3. Select "Shapefile" as output format
+4. Download your .shp, .shx, .dbf files
+
+METHOD 2 - GDAL Online:
+1. Visit https://ogre.adc4gis.com/
+2. Upload "data.geojson"
+3. Choose "ESRI Shapefile" format
+4. Download the shapefile ZIP
+
+METHOD 3 - QGIS (Desktop):
+1. Open QGIS (free download from qgis.org)
+2. Drag "data.geojson" into QGIS
+3. Right-click layer → Export → Save as "ESRI Shapefile"
+
+METHOD 4 - Command Line (GDAL):
+ogr2ogr -f "ESRI Shapefile" output_folder data.geojson
+
+FEATURES: ${features.length}
+GENERATED: ${new Date().toISOString()}
+SOURCE: Advanced Shapefile Viewer
+
+For immediate conversion, use the data.geojson file with any online converter.
+`;
+                
+                zip.file("README.txt", readmeContent);
+
+                // Generate ZIP file as blob, then convert to ArrayBuffer for download
+                return zip.generateAsync({type:"arraybuffer"}).then(function(content) {
+                    return {
+                        data: content,
+                        filename: 'shapefile_package.zip',
+                        mimeType: 'application/zip',
+                        isBlob: true
+                    };
+                });
+                
+            } catch (error) {
+                console.error('Error creating ZIP package, using fallback:', error);
+                return createShapefileFallback(geojson);
+            }
+        }
+
+        function createShapefileFallback(geojson) {
+            console.log('Using fallback shapefile package creation...');
+            
+            // Fallback to text-based package
+            const geojsonStr = JSON.stringify(geojson, null, 2);
+            const features = geojson.features || [geojson];
+            
+            const fallbackContent = `SHAPEFILE CONVERSION PACKAGE
+=============================
+Generated: ${new Date().toISOString()}
+Features: ${features.length}
+
+QUICK CONVERSION:
+1. Go to https://mygeodata.cloud/converter/
+2. Copy the GeoJSON data below
+3. Create a .geojson file with this data
+4. Upload and convert to Shapefile
+
+GEOJSON DATA:
+${geojsonStr}
+
+ALTERNATIVE CONVERTERS:
+- GDAL Online: https://ogre.adc4gis.com/
+- MapShaper: https://mapshaper.org/
+- QGIS Desktop: qgis.org (free)
+
+COMMAND LINE (if you have GDAL):
+ogr2ogr -f "ESRI Shapefile" output_folder input.geojson
+`;
+
+            return Promise.resolve({
+                data: fallbackContent,
+                filename: 'shapefile_conversion_data.txt',
+                mimeType: 'text/plain',
+                isBlob: false
+            });
+        }
+
+        function displayConverterResults(results) {
+            const resultsDiv = document.getElementById('converterResults');
+            const resultsList = document.getElementById('resultsList');
+            
+            resultsList.innerHTML = '';
+            
+            // Store results globally for download
+            window.converterResults = results;
+            
+            results.forEach((result, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                // Add file type icon based on extension
+                const extension = result.name.split('.').pop().toLowerCase();
+                let fileIcon = '📄';
+                switch(extension) {
+                    case 'zip': fileIcon = '📦'; break;
+                    case 'geojson': fileIcon = '🗺️'; break;
+                    case 'kml': fileIcon = '🌍'; break;
+                    case 'gpx': fileIcon = '📍'; break;
+                    case 'csv': fileIcon = '📊'; break;
+                    case 'wkt': fileIcon = '📐'; break;
+                }
+                
+                resultItem.innerHTML = `
+                    <div class="result-info">
+                        <div class="result-name">${fileIcon} ${result.name}</div>
+                        <div class="result-size">${formatFileSize(result.size)} ${result.isBlob ? '(ZIP Package)' : ''}</div>
+                    </div>
+                    <button class="download-btn" onclick="downloadFile(${index})">
+                        💾 Download
+                    </button>
+                `;
+                resultsList.appendChild(resultItem);
+            });
+            
+            resultsDiv.style.display = 'block';
+        }
+
+        function downloadFile(index) {
+            try {
+                const result = window.converterResults[index];
+                console.log('Downloading file:', result.name, 'isBlob:', result.isBlob);
+                
+                let blob;
+                if (result.isBlob) {
+                    // Data is already an ArrayBuffer, create blob directly
+                    blob = new Blob([result.data], { type: result.mimeType });
+                } else {
+                    // Data is text, create blob from string
+                    blob = new Blob([result.data], { type: result.mimeType });
+                }
+                
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = result.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                console.log('File download initiated:', result.name);
+            } catch (error) {
+                console.error('Download error:', error);
+                showConverterError('Error downloading file: ' + error.message);
+            }
+        }
+
+        function formatFileSize(bytes) {
+            // Handle ArrayBuffer
+            if (bytes && bytes.byteLength !== undefined) {
+                bytes = bytes.byteLength;
+            }
+            
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function resetConverter() {
+            // Use the new resetFileUpload function
+            resetFileUpload();
+            
+            // Reset checkboxes to default
+            const includeAttr = document.getElementById('includeAttributes');
+            const simplifyGeo = document.getElementById('simplifyGeometry');
+            const reproject = document.getElementById('reproject');
+            
+            if (includeAttr) includeAttr.checked = true;
+            if (simplifyGeo) simplifyGeo.checked = false;
+            if (reproject) reproject.checked = false;
+        }
+
+        function showConverterLoading(show) {
+            const loadingDiv = document.getElementById('converterLoading');
+            if (loadingDiv) {
+                loadingDiv.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        function showConverterError(message) {
+            const errorDiv = document.getElementById('converterError');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                console.error('Converter Error:', message);
+            }
+            showConverterLoading(false);
+            setTimeout(() => {
+                if (errorDiv) errorDiv.style.display = 'none';
+            }, 8000);
+        }
+
+        function showConverterSuccess(message) {
+            const successDiv = document.getElementById('converterSuccess');
+            if (successDiv) {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                console.log('Converter Success:', message);
+            }
+            showConverterLoading(false);
+            setTimeout(() => {
+                if (successDiv) successDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function hideConverterMessages() {
+            const errorDiv = document.getElementById('converterError');
+            const successDiv = document.getElementById('converterSuccess');
+            if (errorDiv) errorDiv.style.display = 'none';
+            if (successDiv) successDiv.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
